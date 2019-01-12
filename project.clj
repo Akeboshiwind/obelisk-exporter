@@ -1,5 +1,5 @@
 (defproject obelisk-exporter "0.1.0"
-  :description ""
+  :description "A prometheus exporter for the obelisk ui."
   :url "https://github.com/akeboshiwind/obelisk-exporter"
   :license {:name "MIT"}
   :dependencies [[org.clojure/clojure "1.10.0"]
