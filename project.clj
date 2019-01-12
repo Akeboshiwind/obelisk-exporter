@@ -17,6 +17,7 @@
                  [ring/ring-jetty-adapter "1.7.1"]
 
                  ;; Logging
+                 [org.clojure/tools.logging "0.4.1"]
                  [org.slf4j/slf4j-log4j12 "1.7.25"]]
   :main ^:skip-aot obelisk-exporter.core
   :target-path "target/%s"

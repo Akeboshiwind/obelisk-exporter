@@ -6,7 +6,8 @@
             [iapetos.core :as p]
             [iapetos.export :as e]
             [obelisk-exporter.metrics :as m]
-            [obelisk-exporter.env :as env]))
+            [obelisk-exporter.env :as env]
+            [clojure.tools.logging :as log]))
 
 ;;;; --- Prometheus Metrics Registry --- ;;;;
 
@@ -62,7 +63,8 @@
 ;;;; --- Handlers --- ;;;;
 
 (defn index-handler
-  [_]
+  [r]
+  (log/info "User accessed " (:uri r))
   (res/response
    "<body>Metrics are available <a href=\"/metrics\">here</a>.<br>More information about this exporter is available <a href=\"https://github.com/akeboshiwind/obelisk-exporter\">here</a>.</body>"))
 
@@ -100,70 +102,87 @@
   [])
 
 (defn metrics-handler
-  [_]
+  [r]
+  (log/info "User accessed " (:uri r))
   (let [opts (merge {:server-address env/obelisk-server-address}
                     (when env/basic-auth
-                        {:basic-auth env/basic-auth}))]
+                      {:basic-auth env/basic-auth}))]
     (if-let [cookie (api/login env/obelisk-panel-user
                                env/obelisk-panel-password
                                opts)]
-      (let [opts (assoc opts :cookie cookie)
-            d (api/dashboard opts)]
+      (let [opts (assoc opts :cookie cookie)]
+        (log/info "Login successful")
         (if-let [dashboard (api/dashboard opts)]
-          (-> registry
-              ;; :hashrateData metrics
-              (set-metrics :obelisk-exporter/hash-rate-gigahashes-per-second
-                           :hash-rate
-                           (m/hash-rates dashboard))
+          (do
+            (log/info "Dashboard scrape successful")
+            (-> registry
+                ;; :hashrateData metrics
+                (set-metrics :obelisk-exporter/hash-rate-gigahashes-per-second
+                             :hash-rate
+                             (m/hash-rates dashboard))
 
-              ;; :systemInfo metrics
-              (p/set :obelisk-exporter/memory-free-megabytes (m/free-memory dashboard))
-              (p/set :obelisk-exporter/memory-total-megabytes (m/total-memory dashboard))
+                ;; :systemInfo metrics
+                (p/set :obelisk-exporter/memory-free-megabytes (m/free-memory dashboard))
+                (p/set :obelisk-exporter/memory-total-megabytes (m/total-memory dashboard))
 
-              ;; :poolStatus metrics
-              (set-metrics :obelisk-exporter/pool-last-share-time
-                           :last-share-time
-                           (m/last-share-times dashboard))
-              (set-metrics :obelisk-exporter/pool-share-count-total
-                           :value
-                           (m/share-count dashboard))
+                ;; :poolStatus metrics
+                (set-metrics :obelisk-exporter/pool-last-share-time
+                             :last-share-time
+                             (m/last-share-times dashboard))
+                (set-metrics :obelisk-exporter/pool-share-count-total
+                             :value
+                             (m/share-count dashboard))
 
-              ;; :hashboardStatus metrics
-              (set-metrics :obelisk-exporter/board-power-supply-temp-celsius
-                           :power-supply-temp
-                           (m/power-supply-temp dashboard))
-              (set-metrics :obelisk-exporter/board-num-cores-total
-                           :num-cores
-                           (m/num-cores dashboard))
-              (set-metrics :obelisk-exporter/board-temp-celsius
-                           :board-temp
-                           (m/board-temp dashboard))
-              (set-metrics :obelisk-exporter/board-chip-temp-celsius
-                           :chip-temp
-                           (m/chip-temp dashboard))
-              (set-metrics :obelisk-exporter/board-hot-chip-temp-celsius
-                           :hot-chip-temp
-                           (m/hot-chip-temp dashboard))
-              (set-metrics :obelisk-exporter/board-share-count-total
-                           :value
-                           (m/board-share-count dashboard))
-              (set-metrics :obelisk-exporter/board-num-chips-total
-                           :num-chips
-                           (m/num-chips dashboard))
-              (set-metrics :obelisk-exporter/fan-speed-rmp
-                           :fan-speed
-                           (m/fan-speeds dashboard))
+                ;; :hashboardStatus metrics
+                (set-metrics :obelisk-exporter/board-power-supply-temp-celsius
+                             :power-supply-temp
+                             (m/power-supply-temp dashboard))
+                (set-metrics :obelisk-exporter/board-num-cores-total
+                             :num-cores
+                             (m/num-cores dashboard))
+                (set-metrics :obelisk-exporter/board-temp-celsius
+                             :board-temp
+                             (m/board-temp dashboard))
+                (set-metrics :obelisk-exporter/board-chip-temp-celsius
+                             :chip-temp
+                             (m/chip-temp dashboard))
+                (set-metrics :obelisk-exporter/board-hot-chip-temp-celsius
+                             :hot-chip-temp
+                             (m/hot-chip-temp dashboard))
+                (set-metrics :obelisk-exporter/board-share-count-total
+                             :value
+                             (m/board-share-count dashboard))
+                (set-metrics :obelisk-exporter/board-num-chips-total
+                             :num-chips
+                             (m/num-chips dashboard))
+                (set-metrics :obelisk-exporter/fan-speed-rmp
+                             :fan-speed
+                             (m/fan-speeds dashboard))
 
-              ;; rendering
-              e/text-format
-              res/response)
-          (server-error
-           "Server Error: Failed to get a decent response from the obelisk ui.")))
-      (server-error
-       "Server Error: Misconfigured, please check configuration."))))
+                ;; rendering
+                e/text-format
+                res/response))
+          (do
+            (log/error "Failed to get the dashboard output")
+            (server-error
+             "Server Error: Failed to get a decent response from the obelisk ui."))))
+      (do
+        (log/error "Failed to login to obelisk panel")
+        (log/info "OBELISK_SERVER_ADDRESS: " env/obelisk-server-address)
+        (log/info "BASIC_AUTH_USER: " env/basic-auth-user)
+        (log/info "BASIC_AUTH_PASSWORD: " (if (nil? env/basic-auth-password)
+                                            "nil"
+                                            "not nil"))
+        (log/info "OBELISK_PANEL_USER: " env/obelisk-panel-user)
+        (log/info "OBELISK_PANEL_PASSWORD: " (if (nil? env/obelisk-panel-password)
+                                               "nil"
+                                               "not nil"))
+        (server-error
+         "Server Error: Misconfigured, please check configuration.")))))
 
 (defn not-found
-  [_]
+  [r]
+  (log/info "User accessed " (:uri r))
   (res/not-found "404 Not Found"))
 
 (def routes
