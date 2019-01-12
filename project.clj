@@ -14,7 +14,10 @@
                  ;; REST API
                  [bidi "2.1.5"]
                  [ring/ring-core "1.7.1"]
-                 [ring/ring-jetty-adapter "1.7.1"]]
+                 [ring/ring-jetty-adapter "1.7.1"]
+
+                 ;; Logging
+                 [org.slf4j/slf4j-log4j12 "1.7.25"]]
   :main ^:skip-aot obelisk-exporter.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
