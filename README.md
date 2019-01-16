@@ -14,20 +14,20 @@ A docker image is provided at `akeboshiwind/obelisk-exporter`.
 
 Obelisk-exporter accepts a config file, the path to which can be specified using the `--config.file` parameter.
 
-The format for the config file and it's defaults is as follows (keys without values have no default):
+The format for the config file and it's defaults is as follows:
 ```yaml
 general:
   port: 3000
   server_address: '0.0.0.0'
 
 obelisk-ui:
-  server_address:
+  server_address: <no-default>
   panel:
     user: admin
     password: admin
   basic-auth:
-    user:
-    password:
+    user: <no-default>
+    password: <no-default>
 ```
 
 Only the `obelisk-ui.service_address` key is the only key that is required.
