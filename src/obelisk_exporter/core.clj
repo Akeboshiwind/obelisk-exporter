@@ -6,8 +6,10 @@
             [iapetos.core :as p]
             [iapetos.export :as e]
             [obelisk-exporter.metrics :as m]
-            [obelisk-exporter.env :as env]
-            [clojure.tools.logging :as log]))
+            [obelisk-exporter.config :as c]
+            [clojure.tools.logging :as log]
+            [clojure.tools.cli :refer [parse-opts]])
+  (:gen-class))
 
 ;;;; --- Prometheus Metrics Registry --- ;;;;
 
@@ -104,11 +106,12 @@
 (defn metrics-handler
   [r]
   (log/info "User accessed " (:uri r))
-  (let [opts (merge {:server-address env/obelisk-server-address}
-                    (when env/basic-auth
-                      {:basic-auth env/basic-auth}))]
-    (if-let [cookie (api/login env/obelisk-panel-user
-                               env/obelisk-panel-password
+  (let [opts (merge {:server-address (c/config :obelisk-ui :server-address)}
+                    (when (c/config :obelisk-ui :basic-auth)
+                      {:basic-auth [(c/config :obelisk-ui :basic-auth :user)
+                                    (c/config :obelisk-ui :basic-auth :password)]}))]
+    (if-let [cookie (api/login (c/config :obelisk-ui :panel :user)
+                               (c/config :obelisk-ui :panel :password)
                                opts)]
       (let [opts (assoc opts :cookie cookie)]
         (log/info "Login successful")
@@ -168,13 +171,13 @@
              "Server Error: Failed to get a decent response from the obelisk ui."))))
       (do
         (log/error "Failed to login to obelisk panel")
-        (log/info "OBELISK_SERVER_ADDRESS: " env/obelisk-server-address)
-        (log/info "BASIC_AUTH_USER: " env/basic-auth-user)
-        (log/info "BASIC_AUTH_PASSWORD: " (if (nil? env/basic-auth-password)
+        (log/info "OBELISK_SERVER_ADDRESS: " (c/config :obelisk-ui :server-address))
+        (log/info "BASIC_AUTH_USER: " (c/config :obelisk-ui :basic-auth :user))
+        (log/info "BASIC_AUTH_PASSWORD: " (if (nil? (c/config :obelisk-ui :basic-auth :password))
                                             "nil"
                                             "not nil"))
-        (log/info "OBELISK_PANEL_USER: " env/obelisk-panel-user)
-        (log/info "OBELISK_PANEL_PASSWORD: " (if (nil? env/obelisk-panel-password)
+        (log/info "OBELISK_PANEL_USER: " (c/config :obelisk-ui :panel :user))
+        (log/info "OBELISK_PANEL_PASSWORD: " (if (nil? (c/config :obelisk-ui :panel :password))
                                                "nil"
                                                "not nil"))
         (server-error
@@ -198,12 +201,34 @@
 
 ;;;; --- Main --- ;;;;
 
+(def cli-options
+  [["-h" "--help" "Shows this message"]
+   [nil "--config.file PATH" "Config YAML file"
+    :id :config-file]])
+
+(def usage-text
+  "usage: obelisk-exporter [<flags>]
+
+An exporter for the obelisk miner's panel
+
+Flags:
+")
+
 (defn -main
   [& args]
-  (let [server (run-jetty handler {:port 3000
-                                   :join? false})]
-    (fn []
-      (.stop server))))
+  (let [{:keys [options summary]} (parse-opts args cli-options)]
+    (if (:help options)
+      (do
+        (println (str usage-text summary)))
+      (do
+        (if-let [file (:config-file options)]
+          (c/load! file)
+          (c/load!))
+        (let [server (run-jetty handler {:port (c/config :general :port)
+                                         :host (c/config :general :server-address)
+                                         :join? false})]
+          (fn []
+            (.stop server)))))))
 
 (comment
 

@@ -4,12 +4,16 @@
   :license {:name "MIT"}
   :dependencies [[org.clojure/clojure "1.10.0"]
 
+                 ;; Command line args
+                 [org.clojure/tools.cli "0.4.1"]
+
                  ;; Metrics gathering
                  [obelisk-ui "0.1.1"]
                  [iapetos "0.1.8"]
 
                  ;; Configuration
                  [environ "1.1.0"]
+                 [io.forward/yaml "1.0.9"]
 
                  ;; REST API
                  [bidi "2.1.5"]
