@@ -1,4 +1,4 @@
-(defproject obelisk-exporter "0.1.0"
+(defproject obelisk-exporter "0.2.0"
   :description "A prometheus exporter for the obelisk ui."
   :url "https://github.com/akeboshiwind/obelisk-exporter"
   :license {:name "MIT"}
