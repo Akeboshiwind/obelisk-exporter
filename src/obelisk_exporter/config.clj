@@ -2,14 +2,14 @@
   (:require [environ.core :as e]
             [yaml.core :as yaml]))
 
-(def default-env
+(def default-cfg
   {:general {:port 3000
              :server-address "0.0.0.0"}
    :obelisk-ui {:panel {:user "admin"
                         :password "admin"}}})
 
 (def ^{:private true} cfg
-  (atom default-env))
+  (atom default-cfg))
 
 (defn config
   ([& ks]
@@ -52,7 +52,16 @@
 
   (->
    (yaml/from-file "obelisk-exporter.yml")
-   (enrich-config {:obelisk-panel-user "test"})
+   (config :obelisk-ui :panel :user)
    (clojure.pprint/pprint))
+
+  (remove-nils
+   {:general {:port nil,
+              :server-address nil},
+    :obelisk-ui {:server-address nil,
+                 :panel {:user nil,
+                         :password nil},
+                 :basic-auth {:user nil,
+                              :password nil}}})
 
   [])
