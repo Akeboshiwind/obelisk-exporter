@@ -37,14 +37,23 @@
        el))
    nm))
 
+(defn deep-merge [v & vs]
+  (letfn [(rec-merge [v1 v2]
+            (if (and (map? v1) (map? v2))
+              (merge-with deep-merge v1 v2)
+              v2))]
+    (if (some identity vs)
+      (reduce #(rec-merge %1 %2) v vs)
+      (last vs))))
+
 (defn load!
   ([]
    (swap! cfg
-          merge
+          deep-merge
           (remove-nils (env->config e/env))))
   ([config-file]
    (swap! cfg
-          merge
+          deep-merge
           (remove-nils (yaml/from-file config-file))
           (remove-nils (env->config e/env)))))
 
@@ -55,13 +64,17 @@
    (config :obelisk-ui :panel :user)
    (clojure.pprint/pprint))
 
-  (remove-nils
-   {:general {:port nil,
-              :server-address nil},
-    :obelisk-ui {:server-address nil,
-                 :panel {:user nil,
-                         :password nil},
-                 :basic-auth {:user nil,
-                              :password nil}}})
+  default-cfg
+
+  (deep-merge
+   default-cfg
+   (remove-nils
+    {:general {:port nil,
+               :server-address nil},
+     :obelisk-ui {:server-address "test"
+                  :panel {:user nil,
+                          :password nil},
+                  :basic-auth {:user nil,
+                               :password nil}}}))
 
   [])
