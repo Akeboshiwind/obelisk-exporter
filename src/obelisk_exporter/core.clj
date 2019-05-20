@@ -13,7 +13,8 @@
 
 ;;;; --- Prometheus Metrics Registry --- ;;;;
 
-(def registry
+(defn make-registry
+  []
   (-> (p/collector-registry)
       (p/register
        ;; :hashrateData metrics
@@ -118,7 +119,7 @@
         (if-let [dashboard (api/dashboard opts)]
           (do
             (log/info "Dashboard scrape successful")
-            (-> registry
+            (-> (make-registry)
                 ;; :hashrateData metrics
                 (set-metrics :obelisk-exporter/hash-rate-gigahashes-per-second
                              :hash-rate
